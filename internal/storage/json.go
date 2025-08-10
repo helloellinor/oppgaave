@@ -3,7 +3,6 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"sync"
@@ -415,3 +414,4 @@ func (s *JSONStorage) RepairStorage() error {
 
 	return nil
 }
+
