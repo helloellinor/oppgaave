@@ -1,0 +1,68 @@
+<div class="task-item {{.GetUrgencyColor}} {{if .IsBlocked}}blocked{{end}}" 
+     data-task-id="{{.ID}}">
+    <div class="task-header">
+        <div class="task-status">
+            <button 
+                class="status-btn status-{{.Status}}"
+                hx-post="/tasks/{{.ID}}/status"
+                hx-vals='{"status": "{{if eq .Status "pending"}}in_progress{{else if eq .Status "in_progress"}}done{{else}}pending{{end}}"}'
+                hx-target="closest .task-item"
+                hx-swap="outerHTML">
+                {{statusIcon .Status}}
+            </button>
+        </div>
+        
+        <div class="task-content">
+            <h3 class="task-title">{{.Title}}</h3>
+            {{if .Description}}
+                <p class="task-description">{{.Description}}</p>
+            {{end}}
+            
+            <div class="task-meta">
+                <span class="task-duration">⏱️ {{formatDuration .EstimatedDurationMins}}</span>
+                <span class="task-cost">💰 {{formatCurrency .MoneyCost}}</span>
+                <span class="task-priority priority-{{.Priority}}">{{priorityText .Priority}}</span>
+                <span class="task-energy energy-{{.EnergyLevel}}">{{energyText .EnergyLevel}}</span>
+                {{if .Deadline}}
+                    <span class="task-deadline">📅 {{formatDate .Deadline}} {{formatTime .Deadline}}</span>
+                {{end}}
+            </div>
+
+            {{if .Tags}}
+                <div class="task-tags">
+                    {{range .Tags}}
+                        <span class="tag">{{.}}</span>
+                    {{end}}
+                </div>
+            {{end}}
+
+            {{if .Prerequisites}}
+                <div class="task-prerequisites">
+                    <strong>Prerequisites:</strong>
+                    {{range .Prerequisites}}
+                        <span class="prerequisite status-{{.Status}}">
+                            {{statusIcon .Status}} {{.Title}}
+                        </span>
+                    {{end}}
+                </div>
+            {{end}}
+
+            {{if .Subtasks}}
+                <div class="task-subtasks">
+                    <strong>Subtasks:</strong>
+                    {{range .Subtasks}}
+                        <div class="subtask">
+                            {{statusIcon .Status}} {{.Title}} ({{formatDuration .EstimatedDurationMins}})
+                        </div>
+                    {{end}}
+                </div>
+            {{end}}
+        </div>
+    </div>
+
+    {{if .IsBlocked}}
+        <div class="blocked-notice">
+            🚫 Blocked by incomplete prerequisites
+        </div>
+    {{end}}
+</div>

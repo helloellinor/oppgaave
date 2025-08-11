@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADHD Task Manager</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🧠 ADHD Task Manager</h1>
+            <div class="current-time">{{.CurrentTime}}</div>
+        </header>
+
+        <main class="main-content">
+            <div class="budget-section">
+                <div id="budget-widget" hx-get="/budget-widget" hx-trigger="load, every 30s">
+                    {{template "budget_widget.html" .Budget}}
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <section class="today-tasks">
+                    <h2>📅 Today's Focus</h2>
+                    <div class="task-timeline">
+                        {{range .TodayTasks}}
+                            {{template "task_item.html" .}}
+                        {{end}}
+                    </div>
+                </section>
+
+                <section class="task-management">
+                    <div class="section-header">
+                        <h2>📋 All Tasks</h2>
+                        <button 
+                            class="btn btn-primary"
+                            hx-get="/tasks/create"
+                            hx-target="#create-task-modal"
+                            hx-trigger="click">
+                            ➕ Add Task
+                        </button>
+                    </div>
+                    
+                    <div id="task-list" hx-get="/tasks" hx-trigger="load">
+                        {{range .Tasks}}
+                            {{template "task_item.html" .}}
+                        {{end}}
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Modal for creating tasks -->
+        <div id="create-task-modal" class="modal"></div>
+    </div>
+
+    <script>
+        // Auto-refresh task list when tasks are updated
+        document.addEventListener('htmx:afterRequest', function(event) {
+            if (event.detail.xhr.status === 200 && event.detail.pathInfo.requestPath.includes('/tasks/')) {
+                htmx.trigger('#task-list', 'refresh');
+                htmx.trigger('#budget-widget', 'refresh');
+            }
+        });
+    </script>
+</body>
+</html>
