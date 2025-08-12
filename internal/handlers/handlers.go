@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"oppgaave/internal/database"
@@ -153,16 +154,26 @@ func (h *Handlers) Dashboard(w http.ResponseWriter, r *http.Request) {
 
 	budget.SpentCoins = spentCoins
 
+	// Get contacts for the dashboard
+	contacts, err := h.db.GetAllContacts()
+	if err != nil {
+		log.Printf("Error getting contacts: %v", err)
+		// Don't fail the whole dashboard, just use empty contacts
+		contacts = []models.Contact{}
+	}
+
 	data := struct {
 		Tasks       []models.Task
 		TodayTasks  []models.Task
 		Budget      *models.DailyBudget
 		CurrentTime string
+		Contacts    []models.Contact
 	}{
 		Tasks:       tasks,
 		TodayTasks:  todayTasks,
 		Budget:      budget,
 		CurrentTime: today.Format("15:04"),
+		Contacts:    contacts,
 	}
 
 	if err := h.templates.ExecuteTemplate(w, "dashboard.html", data); err != nil {
@@ -641,4 +652,167 @@ func (h *Handlers) CreateMessage(w http.ResponseWriter, r *http.Request) {
 			Close
 		</button>
 	</div>`))
+}
+
+// ForwardEmail handles email forwarding and parsing
+func (h *Handlers) ForwardEmail(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	emailFrom := r.FormValue("from")
+	_ = r.FormValue("to") // Currently unused but available for future features
+	subject := r.FormValue("subject")
+	body := r.FormValue("body")
+
+	if emailFrom == "" || body == "" {
+		http.Error(w, "From address and body are required", http.StatusBadRequest)
+		return
+	}
+
+	// Try to find existing contact by email
+	contact, err := h.db.GetContactByEmail(emailFrom)
+	if err != nil {
+		// Contact doesn't exist, create a new one
+		// Extract name from email (before @)
+		name := emailFrom
+		if atIndex := strings.Index(emailFrom, "@"); atIndex > 0 {
+			name = emailFrom[:atIndex]
+		}
+		
+		contact, err = h.db.CreateContact(name, emailFrom, "", "person", "Created from forwarded email")
+		if err != nil {
+			log.Printf("Error creating contact from email: %v", err)
+			http.Error(w, "Failed to create contact", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Create thread entry for the forwarded email
+	_, err = h.db.CreateContactThread(contact.ID, nil, subject, body, "email", "inbound")
+	if err != nil {
+		log.Printf("Error creating thread for forwarded email: %v", err)
+		http.Error(w, "Failed to save email thread", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(fmt.Sprintf(`{"success": true, "message": "Email forwarded and saved", "contact_id": %d}`, contact.ID)))
+}
+
+// ParseEmailForm provides a form for manual email entry/forwarding
+func (h *Handlers) ParseEmailForm(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		w.Write([]byte(`<!DOCTYPE html>
+<html>
+<head>
+    <title>Forward Email to Contact System</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        textarea { height: 200px; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        .success { color: green; padding: 10px; background: #f0f8f0; border-radius: 4px; margin: 10px 0; }
+        .error { color: red; padding: 10px; background: #f8f0f0; border-radius: 4px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>📧 Forward Email to Contact System</h1>
+    <p>Use this form to forward emails and automatically create contacts and communication threads.</p>
+    
+    <form method="POST" action="/contacts/email/parse">
+        <div class="form-group">
+            <label for="from">From Email Address:</label>
+            <input type="email" name="from" id="from" required 
+                   placeholder="sender@example.com" />
+        </div>
+        
+        <div class="form-group">
+            <label for="to">To Email Address (optional):</label>
+            <input type="email" name="to" id="to" 
+                   placeholder="your@email.com" />
+        </div>
+        
+        <div class="form-group">
+            <label for="subject">Subject:</label>
+            <input type="text" name="subject" id="subject" 
+                   placeholder="Email subject line" />
+        </div>
+        
+        <div class="form-group">
+            <label for="body">Email Body:</label>
+            <textarea name="body" id="body" required 
+                      placeholder="Paste the email content here..."></textarea>
+        </div>
+        
+        <button type="submit">📥 Forward Email</button>
+        <a href="/" style="margin-left: 10px;">← Back to Dashboard</a>
+    </form>
+    
+    <div style="margin-top: 30px; padding: 15px; background: #f8f9fa; border-radius: 4px;">
+        <h3>💡 How it works:</h3>
+        <ul>
+            <li><strong>Auto-Contact Creation:</strong> If the sender email doesn't exist, a new contact will be created automatically</li>
+            <li><strong>Thread Logging:</strong> The email will be saved as a communication thread entry</li>
+            <li><strong>Email Association:</strong> The email address will be linked to the contact for future reference</li>
+            <li><strong>AI-Ready:</strong> All data is structured for future AI processing and analysis</li>
+        </ul>
+    </div>
+</body>
+</html>`))
+		return
+	}
+
+	// Handle POST - same as ForwardEmail but with HTML response
+	if err := r.ParseForm(); err != nil {
+		w.Write([]byte(`<div class="error">Failed to parse form data</div>`))
+		return
+	}
+
+	emailFrom := r.FormValue("from")
+	_ = r.FormValue("to") // Currently unused but available for future features
+	subject := r.FormValue("subject")
+	body := r.FormValue("body")
+
+	if emailFrom == "" || body == "" {
+		w.Write([]byte(`<div class="error">From address and body are required</div>`))
+		return
+	}
+
+	// Try to find existing contact by email
+	contact, err := h.db.GetContactByEmail(emailFrom)
+	if err != nil {
+		// Contact doesn't exist, create a new one
+		// Extract name from email (before @)
+		name := emailFrom
+		if atIndex := strings.Index(emailFrom, "@"); atIndex > 0 {
+			name = emailFrom[:atIndex]
+		}
+		
+		contact, err = h.db.CreateContact(name, emailFrom, "", "person", "Created from forwarded email")
+		if err != nil {
+			log.Printf("Error creating contact from email: %v", err)
+			w.Write([]byte(`<div class="error">Failed to create contact</div>`))
+			return
+		}
+	}
+
+	// Create thread entry for the forwarded email
+	_, err = h.db.CreateContactThread(contact.ID, nil, subject, body, "email", "inbound")
+	if err != nil {
+		log.Printf("Error creating thread for forwarded email: %v", err)
+		w.Write([]byte(`<div class="error">Failed to save email thread</div>`))
+		return
+	}
+
+	w.Write([]byte(fmt.Sprintf(`<div class="success">
+		✅ Email successfully forwarded and saved!<br>
+		📞 Contact: %s (%s)<br>
+		📧 Subject: %s<br>
+		<a href="/">← Back to Dashboard</a> | 
+		<a href="/contacts/email/parse">Forward Another Email</a>
+	</div>`, contact.Name, contact.Email, subject)))
 }
