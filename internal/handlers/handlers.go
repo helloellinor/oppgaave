@@ -141,10 +141,13 @@ func (h *Handlers) Dashboard(w http.ResponseWriter, r *http.Request) {
 	// Calculate spent budget from pending/in-progress tasks
 	spentCoins := 0
 	var todayTasks []models.Task
-	for _, task := range tasks {
+	for i, task := range tasks {
+		// Calculate radar position for each task
+		tasks[i].CalculateRadarPosition()
+		
 		if task.Status == models.StatusPending || task.Status == models.StatusInProgress {
 			spentCoins += task.MoneyCost
-			todayTasks = append(todayTasks, task)
+			todayTasks = append(todayTasks, tasks[i])
 		}
 	}
 
