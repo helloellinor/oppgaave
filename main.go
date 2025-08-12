@@ -34,9 +34,17 @@ func main() {
 
 	// HTMX endpoints for dynamic content
 	r.HandleFunc("/tasks", h.GetTaskList).Methods("GET")
+	r.HandleFunc("/tasks/radar", h.GetTaskRadar).Methods("GET")
 	r.HandleFunc("/tasks/create", h.CreateTask).Methods("GET", "POST")
 	r.HandleFunc("/tasks/{id}/status", h.UpdateTaskStatus).Methods("POST")
+	r.HandleFunc("/tasks/{id}/details", h.GetTaskDetails).Methods("GET")
 	r.HandleFunc("/budget-widget", h.GetBudgetWidget).Methods("GET")
+	
+	// Contact management endpoints
+	r.HandleFunc("/contacts", h.GetContacts).Methods("GET")
+	r.HandleFunc("/contacts/create", h.CreateContact).Methods("GET", "POST")
+	r.HandleFunc("/contacts/{id}/threads", h.GetContactThreads).Methods("GET")
+	r.HandleFunc("/contacts/{id}/message", h.CreateMessage).Methods("GET", "POST")
 
 	// JSON API endpoints
 	api := r.PathPrefix("/api").Subrouter()

@@ -21,6 +21,31 @@
                 </div>
             </div>
 
+            <!-- Radar View Section -->
+            <div class="radar-section">
+                <div class="section-header">
+                    <h2>🎯 Task Radar</h2>
+                    <div class="view-toggles">
+                        <button class="btn btn-secondary" 
+                                hx-get="/tasks/radar"
+                                hx-target="#main-task-view"
+                                hx-trigger="click">
+                            🎯 Radar View
+                        </button>
+                        <button class="btn btn-secondary"
+                                hx-get="/tasks"
+                                hx-target="#main-task-view"
+                                hx-trigger="click">
+                            📋 List View
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="main-task-view" hx-get="/tasks/radar" hx-trigger="load">
+                    <!-- Radar view will load here -->
+                </div>
+            </div>
+
             <div class="dashboard-grid">
                 <section class="today-tasks">
                     <h2>📅 Today's Focus</h2>
@@ -31,24 +56,30 @@
                     </div>
                 </section>
 
-                <section class="task-management">
-                    <div class="section-header">
-                        <h2>📋 All Tasks</h2>
-                        <button 
-                            class="btn btn-primary"
-                            hx-get="/tasks/create"
-                            hx-target="#create-task-modal"
-                            hx-trigger="click">
-                            ➕ Add Task
-                        </button>
-                    </div>
-                    
-                    <div id="task-list" hx-get="/tasks" hx-trigger="load">
-                        {{range .Tasks}}
-                            {{template "task_item.html" .}}
-                        {{end}}
+                <section class="contacts-section">
+                    <div id="contacts-view" hx-get="/contacts" hx-trigger="load">
+                        <!-- Contacts will load here -->
                     </div>
                 </section>
+            </div>
+
+            <div class="task-management-section">
+                <div class="section-header">
+                    <h2>📋 All Tasks</h2>
+                    <button 
+                        class="btn btn-primary"
+                        hx-get="/tasks/create"
+                        hx-target="#create-task-modal"
+                        hx-trigger="click">
+                        ➕ Add Task
+                    </button>
+                </div>
+                
+                <div id="task-list" hx-get="/tasks" hx-trigger="load">
+                    {{range .Tasks}}
+                        {{template "task_item.html" .}}
+                    {{end}}
+                </div>
             </div>
         </main>
 

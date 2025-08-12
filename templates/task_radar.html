@@ -1,0 +1,59 @@
+<div class="radar-container">
+    <div class="radar-screen">
+        <div class="radar-grid">
+            <!-- Concentric circles for time -->
+            <div class="radar-circle radar-circle-1"></div>
+            <div class="radar-circle radar-circle-2"></div>
+            <div class="radar-circle radar-circle-3"></div>
+            <div class="radar-circle radar-circle-4"></div>
+            
+            <!-- Cross lines for quadrants -->
+            <div class="radar-line radar-line-horizontal"></div>
+            <div class="radar-line radar-line-vertical"></div>
+            
+            <!-- Time labels -->
+            <div class="radar-label radar-label-top">High Priority/Energy</div>
+            <div class="radar-label radar-label-right">1 Week</div>
+            <div class="radar-label radar-label-bottom">Low Priority/Energy</div>
+            <div class="radar-label radar-label-left">Now</div>
+            <div class="radar-label radar-label-center">Task Radar</div>
+        </div>
+        
+        <!-- Tasks as radar blips -->
+        {{range .}}
+            <div class="radar-blip radar-blip-{{.TaskType}} {{.GetUrgencyColor}} {{if .IsBlocked}}blocked{{end}}"
+                 style="left: {{.RadarPositionX}}%; bottom: {{.RadarPositionY}}%;"
+                 data-task-id="{{.ID}}"
+                 hx-get="/tasks/{{.ID}}/details"
+                 hx-target="#task-details-modal"
+                 hx-trigger="click">
+                <div class="radar-blip-icon">{{.GetTaskTypeIcon}}</div>
+                <div class="radar-blip-title">{{.Title}}</div>
+                {{if .IsEvent}}
+                    <div class="radar-blip-time">
+                        {{if .EventStart}}{{formatTime .EventStart}}{{end}}
+                    </div>
+                {{end}}
+                {{if .Contacts}}
+                    <div class="radar-blip-contacts">
+                        {{range .Contacts}}👤{{end}}
+                    </div>
+                {{end}}
+            </div>
+        {{end}}
+        
+        <!-- Radar sweep animation -->
+        <div class="radar-sweep"></div>
+    </div>
+    
+    <!-- Timeline at bottom -->
+    <div class="radar-timeline">
+        <div class="timeline-marker timeline-now">Now</div>
+        <div class="timeline-marker timeline-today">Today</div>
+        <div class="timeline-marker timeline-tomorrow">Tomorrow</div>
+        <div class="timeline-marker timeline-week">This Week</div>
+    </div>
+</div>
+
+<!-- Task details modal -->
+<div id="task-details-modal" class="modal"></div>
