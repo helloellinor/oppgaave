@@ -821,3 +821,165 @@ func (db *DB) GetContactThreads(contactID int) ([]models.ContactThread, error) {
 
 	return threads, nil
 }
+
+// CreateContact creates a new contact
+func (db *DB) CreateContact(name, email, phone, contactType, notes string) (*models.Contact, error) {
+	query := `
+		INSERT INTO contacts (name, email, phone, type, notes, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+
+	result, err := db.conn.Exec(query, name, email, phone, contactType, notes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create contact: %w", err)
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get contact ID: %w", err)
+	}
+
+	// Get the created contact
+	return db.GetContact(int(id))
+}
+
+// CreateContactThread creates a new communication thread entry
+func (db *DB) CreateContactThread(contactID int, taskID *int, subject, message, threadType, direction string) (*models.ContactThread, error) {
+	query := `
+		INSERT INTO contact_threads (contact_id, task_id, subject, message, thread_type, direction, status, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, 'sent', CURRENT_TIMESTAMP)`
+
+	result, err := db.conn.Exec(query, contactID, taskID, subject, message, threadType, direction)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create contact thread: %w", err)
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get thread ID: %w", err)
+	}
+
+	// Get the created thread
+	thread := &models.ContactThread{
+		ID:         int(id),
+		ContactID:  contactID,
+		TaskID:     taskID,
+		Subject:    subject,
+		Message:    message,
+		ThreadType: threadType,
+		Direction:  direction,
+		Status:     "sent",
+		CreatedAt:  time.Now(),
+	}
+
+	return thread, nil
+}
+
+// GetContact retrieves a specific contact by ID
+func (db *DB) GetContact(id int) (*models.Contact, error) {
+	query := `SELECT id, name, email, phone, type, notes, avatar_url, created_at, updated_at FROM contacts WHERE id = ?`
+
+	var contact models.Contact
+	var (
+		email, phone, notes, avatarURL sql.NullString
+	)
+	
+	err := db.conn.QueryRow(query, id).Scan(
+		&contact.ID, &contact.Name, &email, &phone,
+		&contact.Type, &notes, &avatarURL,
+		&contact.CreatedAt, &contact.UpdatedAt)
+	
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("contact not found")
+		}
+		return nil, fmt.Errorf("failed to get contact: %w", err)
+	}
+
+	// Handle nullable fields
+	if email.Valid {
+		contact.Email = email.String
+	}
+	if phone.Valid {
+		contact.Phone = phone.String
+	}
+	if notes.Valid {
+		contact.Notes = notes.String
+	}
+	if avatarURL.Valid {
+		contact.AvatarURL = avatarURL.String
+	}
+
+	return &contact, nil
+}
+
+// GetContactByEmail finds a contact by email address
+func (db *DB) GetContactByEmail(email string) (*models.Contact, error) {
+	query := `SELECT id, name, email, phone, type, notes, avatar_url, created_at, updated_at FROM contacts WHERE email = ?`
+
+	var contact models.Contact
+	var (
+		emailValue, phone, notes, avatarURL sql.NullString
+	)
+	
+	err := db.conn.QueryRow(query, email).Scan(
+		&contact.ID, &contact.Name, &emailValue, &phone,
+		&contact.Type, &notes, &avatarURL,
+		&contact.CreatedAt, &contact.UpdatedAt)
+	
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("contact not found")
+		}
+		return nil, fmt.Errorf("failed to get contact: %w", err)
+	}
+
+	// Handle nullable fields
+	if emailValue.Valid {
+		contact.Email = emailValue.String
+	}
+	if phone.Valid {
+		contact.Phone = phone.String
+	}
+	if notes.Valid {
+		contact.Notes = notes.String
+	}
+	if avatarURL.Valid {
+		contact.AvatarURL = avatarURL.String
+	}
+
+	return &contact, nil
+}
+
+// CreateAttachment creates a new attachment record
+func (db *DB) CreateAttachment(taskID, contactID *int, filename, originalFilename, filePath, mimeType, description, attachmentType string, fileSize int64) (*models.Attachment, error) {
+	query := `
+		INSERT INTO attachments (task_id, contact_id, filename, original_filename, file_path, file_size, mime_type, description, attachment_type, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+
+	result, err := db.conn.Exec(query, taskID, contactID, filename, originalFilename, filePath, fileSize, mimeType, description, attachmentType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create attachment: %w", err)
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get attachment ID: %w", err)
+	}
+
+	// Return the created attachment
+	attachment := &models.Attachment{
+		ID:               int(id),
+		TaskID:           taskID,
+		ContactID:        contactID,
+		Filename:         filename,
+		OriginalFilename: originalFilename,
+		FilePath:         filePath,
+		FileSize:         fileSize,
+		MimeType:         mimeType,
+		Description:      description,
+		AttachmentType:   attachmentType,
+		CreatedAt:        time.Now(),
+	}
+
+	return attachment, nil
+}
