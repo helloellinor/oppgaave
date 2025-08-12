@@ -407,10 +407,10 @@ func (h *Handlers) GetContacts(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// CreateContact handles contact creation (placeholder)
+// CreateContact handles contact creation
 func (h *Handlers) CreateContact(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		// Return contact creation form (to be implemented)
+		// Return contact creation form
 		w.Write([]byte(`<div class="modal-content">
 			<div class="modal-header">
 				<h2>Add Contact</h2>
@@ -450,16 +450,54 @@ func (h *Handlers) CreateContact(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handle POST - placeholder for now
-	w.Write([]byte("Contact created successfully"))
+	// Handle POST - create the contact
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	name := r.FormValue("name")
+	email := r.FormValue("email")
+	phone := r.FormValue("phone")
+	contactType := r.FormValue("type")
+	notes := r.FormValue("notes")
+
+	if name == "" {
+		http.Error(w, "Name is required", http.StatusBadRequest)
+		return
+	}
+
+	contact, err := h.db.CreateContact(name, email, phone, contactType, notes)
+	if err != nil {
+		log.Printf("Error creating contact: %v", err)
+		http.Error(w, "Failed to create contact", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success message and refresh the contact list
+	w.Write([]byte(fmt.Sprintf(`<div class="success-message">
+		<p>✅ Contact "%s" created successfully!</p>
+		<button type="button" class="btn btn-secondary" 
+		        onclick="document.getElementById('contact-modal').innerHTML = ''; window.location.reload();">
+			Close
+		</button>
+	</div>`, contact.Name)))
 }
 
-// GetContactThreads returns communication threads for a contact (placeholder)
+// GetContactThreads returns communication threads for a contact
 func (h *Handlers) GetContactThreads(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	contactID, err := strconv.Atoi(vars["id"])
 	if err != nil {
 		http.Error(w, "Invalid contact ID", http.StatusBadRequest)
+		return
+	}
+
+	// Get contact details
+	contact, err := h.db.GetContact(contactID)
+	if err != nil {
+		log.Printf("Error getting contact: %v", err)
+		http.Error(w, "Contact not found", http.StatusNotFound)
 		return
 	}
 
@@ -470,21 +508,66 @@ func (h *Handlers) GetContactThreads(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Simplified thread display for now
-	w.Write([]byte(fmt.Sprintf(`<div class="thread-section">
-		<h3>Communication Threads</h3>
-		<p>Found %d threads for contact ID %d</p>
-		<div class="btn-group">
-			<button class="btn btn-primary">Add Message</button>
-			<button class="btn btn-secondary">Add Call Log</button>
+	// Build HTML for thread display
+	html := fmt.Sprintf(`<div class="thread-section">
+		<div class="thread-header">
+			<h3>💬 Communication with %s</h3>
+			<button class="btn btn-primary" 
+			        hx-get="/contacts/%d/message" 
+			        hx-target="#message-modal"
+			        hx-trigger="click">
+				➕ Add Message
+			</button>
 		</div>
-	</div>`, len(threads), contactID)))
+		<div class="thread-list">`, contact.Name, contactID)
+
+	if len(threads) == 0 {
+		html += `<div class="empty-state">
+			<p>No communication threads yet. Start a conversation!</p>
+		</div>`
+	} else {
+		for _, thread := range threads {
+			directionIcon := "➡️"
+			if thread.Direction == "inbound" {
+				directionIcon = "⬅️"
+			}
+			
+			typeIcon := "💬"
+			switch thread.ThreadType {
+			case "email":
+				typeIcon = "📧"
+			case "call":
+				typeIcon = "📞"
+			case "meeting":
+				typeIcon = "💼"
+			}
+
+			html += fmt.Sprintf(`<div class="thread-item">
+				<div class="thread-meta">
+					<span class="thread-type">%s %s</span>
+					<span class="thread-direction">%s</span>
+					<span class="thread-date">%s</span>
+				</div>
+				<div class="thread-subject">%s</div>
+				<div class="thread-message">%s</div>
+			</div>`, typeIcon, thread.ThreadType, directionIcon, 
+				thread.CreatedAt.Format("Jan 2, 15:04"), thread.Subject, thread.Message)
+		}
+	}
+
+	html += `</div></div>`
+	w.Write([]byte(html))
 }
 
-// CreateMessage handles creating new messages (placeholder)
+// CreateMessage handles creating new messages
 func (h *Handlers) CreateMessage(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	contactID := vars["id"]
+	contactIDStr := vars["id"]
+	contactID, err := strconv.Atoi(contactIDStr)
+	if err != nil {
+		http.Error(w, "Invalid contact ID", http.StatusBadRequest)
+		return
+	}
 
 	if r.Method == "GET" {
 		w.Write([]byte(fmt.Sprintf(`<div class="modal-content">
@@ -507,17 +590,55 @@ func (h *Handlers) CreateMessage(w http.ResponseWriter, r *http.Request) {
 						<option value="message">Message</option>
 						<option value="email">Email</option>
 						<option value="call">Call Log</option>
+						<option value="meeting">Meeting Notes</option>
+					</select>
+				</div>
+				<div class="form-group">
+					<label>Direction:</label>
+					<select name="direction">
+						<option value="outbound">Outbound</option>
+						<option value="inbound">Inbound</option>
 					</select>
 				</div>
 				<div class="form-actions">
-					<button type="submit" class="btn btn-primary">Send</button>
+					<button type="submit" class="btn btn-primary">Save</button>
 					<button type="button" class="btn btn-secondary" onclick="document.getElementById('message-modal').innerHTML = ''">Cancel</button>
 				</div>
 			</form>
-		</div>`, contactID)))
+		</div>`, contactIDStr)))
 		return
 	}
 
-	// Handle POST - placeholder for now
-	w.Write([]byte("Message sent successfully"))
+	// Handle POST - create the message
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	subject := r.FormValue("subject")
+	message := r.FormValue("message")
+	threadType := r.FormValue("type")
+	direction := r.FormValue("direction")
+
+	if message == "" {
+		http.Error(w, "Message is required", http.StatusBadRequest)
+		return
+	}
+
+	// Create the thread entry
+	_, err = h.db.CreateContactThread(contactID, nil, subject, message, threadType, direction)
+	if err != nil {
+		log.Printf("Error creating contact thread: %v", err)
+		http.Error(w, "Failed to save message", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success message and close modal
+	w.Write([]byte(`<div class="success-message">
+		<p>✅ Message saved successfully!</p>
+		<button type="button" class="btn btn-secondary" 
+		        onclick="document.getElementById('message-modal').innerHTML = ''; document.getElementById('thread-viewer').innerHTML = '';">
+			Close
+		</button>
+	</div>`))
 }

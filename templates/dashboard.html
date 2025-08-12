@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ADHD Task Manager</title>
     <link rel="stylesheet" href="/static/style.css">
+    <script src="https://unpkg.com/htmx.org@1.9.2"></script>
 </head>
 <body>
     <div class="container">
@@ -104,60 +105,8 @@
                 </section>
 
                 <section class="contacts-section">
-                    <div class="contacts-header">
-                        <h3>📞 Contact Threads</h3>
-                        <button class="btn btn-primary" onclick="showContacts()">
-                            ➕ Add Contact
-                        </button>
-                    </div>
-                    
-                    <div class="contacts-list">
-                        <!-- Show sample contacts -->
-                        <div class="contact-card">
-                            <div class="contact-info">
-                                <div class="contact-avatar">
-                                    <div class="contact-initials">D</div>
-                                </div>
-                                <div class="contact-details">
-                                    <h4 class="contact-name">Dr. Sarah Johnson</h4>
-                                    <div class="contact-type">person</div>
-                                    <div class="contact-email">📧 sarah.johnson@yogastudio.com</div>
-                                    <div class="contact-phone">📱 +1-555-0123</div>
-                                </div>
-                            </div>
-                            <div class="contact-actions">
-                                <button class="btn btn-secondary" onclick="showThreads(1)">
-                                    💬 Threads
-                                </button>
-                                <button class="btn btn-secondary" onclick="sendMessage(1)">
-                                    ✉️ Message
-                                </button>
-                            </div>
-                            <div class="contact-notes">Yoga instructor</div>
-                        </div>
-                        
-                        <div class="contact-card">
-                            <div class="contact-info">
-                                <div class="contact-avatar">
-                                    <div class="contact-initials">J</div>
-                                </div>
-                                <div class="contact-details">
-                                    <h4 class="contact-name">Jazz Venue</h4>
-                                    <div class="contact-type">venue</div>
-                                    <div class="contact-email">📧 info@jazzclub.com</div>
-                                    <div class="contact-phone">📱 +1-555-0456</div>
-                                </div>
-                            </div>
-                            <div class="contact-actions">
-                                <button class="btn btn-secondary" onclick="showThreads(3)">
-                                    💬 Threads
-                                </button>
-                                <button class="btn btn-secondary" onclick="sendMessage(3)">
-                                    ✉️ Message
-                                </button>
-                            </div>
-                            <div class="contact-notes">Downtown jazz club</div>
-                        </div>
+                    <div id="contacts-container" hx-get="/contacts" hx-trigger="load">
+                        <!-- Contact list will be loaded here -->
                     </div>
                 </section>
             </div>
@@ -209,19 +158,6 @@
                     });
                 })
                 .catch(err => console.error('Error loading task details:', err));
-        }
-        
-        // Contact management functions
-        function showContacts() {
-            alert('Contact management feature coming soon!');
-        }
-        
-        function showThreads(contactId) {
-            alert(`Communication threads for contact ${contactId} coming soon!`);
-        }
-        
-        function sendMessage(contactId) {
-            alert(`Message interface for contact ${contactId} coming soon!`);
         }
         
         // View toggle functionality (simplified without HTMX)
