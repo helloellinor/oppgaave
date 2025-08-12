@@ -82,6 +82,20 @@ func New(db *database.DB) *Handlers {
 				return "Low Energy"
 			}
 		},
+		"taskTypeText": func(taskType models.TaskType) string {
+			switch taskType {
+			case models.TypeAppointment:
+				return "Appointment"
+			case models.TypeEvent:
+				return "Event"
+			case models.TypeConcert:
+				return "Concert"
+			case models.TypeMeeting:
+				return "Meeting"
+			default:
+				return "Task"
+			}
+		},
 		"mul": func(a, b int) int {
 			return a * b
 		},
@@ -127,10 +141,13 @@ func (h *Handlers) Dashboard(w http.ResponseWriter, r *http.Request) {
 	// Calculate spent budget from pending/in-progress tasks
 	spentCoins := 0
 	var todayTasks []models.Task
-	for _, task := range tasks {
+	for i, task := range tasks {
+		// Calculate radar position for each task
+		tasks[i].CalculateRadarPosition()
+		
 		if task.Status == models.StatusPending || task.Status == models.StatusInProgress {
 			spentCoins += task.MoneyCost
-			todayTasks = append(todayTasks, task)
+			todayTasks = append(todayTasks, tasks[i])
 		}
 	}
 
@@ -331,4 +348,176 @@ func (h *Handlers) CreateTaskAPI(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(task)
+}
+
+// GetTaskRadar returns the radar visualization for tasks
+func (h *Handlers) GetTaskRadar(w http.ResponseWriter, r *http.Request) {
+	tasks, err := h.db.GetAllTasks()
+	if err != nil {
+		log.Printf("Error getting tasks for radar: %v", err)
+		http.Error(w, "Failed to load tasks", http.StatusInternalServerError)
+		return
+	}
+
+	// Calculate radar positions for all tasks
+	for i := range tasks {
+		tasks[i].CalculateRadarPosition()
+	}
+
+	if err := h.templates.ExecuteTemplate(w, "task_radar.html", tasks); err != nil {
+		log.Printf("Error executing radar template: %v", err)
+		http.Error(w, "Failed to render radar", http.StatusInternalServerError)
+	}
+}
+
+// GetTaskDetails returns detailed task information
+func (h *Handlers) GetTaskDetails(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	taskID, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		return
+	}
+
+	task, err := h.db.GetTask(taskID)
+	if err != nil {
+		log.Printf("Error getting task details: %v", err)
+		http.Error(w, "Failed to get task", http.StatusInternalServerError)
+		return
+	}
+
+	if err := h.templates.ExecuteTemplate(w, "task_details.html", task); err != nil {
+		log.Printf("Error executing task details template: %v", err)
+		http.Error(w, "Failed to render task details", http.StatusInternalServerError)
+	}
+}
+
+// GetContacts returns all contacts
+func (h *Handlers) GetContacts(w http.ResponseWriter, r *http.Request) {
+	contacts, err := h.db.GetAllContacts()
+	if err != nil {
+		log.Printf("Error getting contacts: %v", err)
+		http.Error(w, "Failed to load contacts", http.StatusInternalServerError)
+		return
+	}
+
+	if err := h.templates.ExecuteTemplate(w, "contact_threads.html", contacts); err != nil {
+		log.Printf("Error executing contacts template: %v", err)
+		http.Error(w, "Failed to render contacts", http.StatusInternalServerError)
+	}
+}
+
+// CreateContact handles contact creation (placeholder)
+func (h *Handlers) CreateContact(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		// Return contact creation form (to be implemented)
+		w.Write([]byte(`<div class="modal-content">
+			<div class="modal-header">
+				<h2>Add Contact</h2>
+				<button class="modal-close" onclick="document.getElementById('contact-modal').innerHTML = ''">×</button>
+			</div>
+			<form hx-post="/contacts/create" hx-target="#contact-modal" hx-swap="innerHTML">
+				<div class="form-group">
+					<label>Name:</label>
+					<input type="text" name="name" required>
+				</div>
+				<div class="form-group">
+					<label>Email:</label>
+					<input type="email" name="email">
+				</div>
+				<div class="form-group">
+					<label>Phone:</label>
+					<input type="tel" name="phone">
+				</div>
+				<div class="form-group">
+					<label>Type:</label>
+					<select name="type">
+						<option value="person">Person</option>
+						<option value="organization">Organization</option>
+						<option value="venue">Venue</option>
+					</select>
+				</div>
+				<div class="form-group">
+					<label>Notes:</label>
+					<textarea name="notes"></textarea>
+				</div>
+				<div class="form-actions">
+					<button type="submit" class="btn btn-primary">Create Contact</button>
+					<button type="button" class="btn btn-secondary" onclick="document.getElementById('contact-modal').innerHTML = ''">Cancel</button>
+				</div>
+			</form>
+		</div>`))
+		return
+	}
+
+	// Handle POST - placeholder for now
+	w.Write([]byte("Contact created successfully"))
+}
+
+// GetContactThreads returns communication threads for a contact (placeholder)
+func (h *Handlers) GetContactThreads(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	contactID, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		http.Error(w, "Invalid contact ID", http.StatusBadRequest)
+		return
+	}
+
+	threads, err := h.db.GetContactThreads(contactID)
+	if err != nil {
+		log.Printf("Error getting contact threads: %v", err)
+		http.Error(w, "Failed to load threads", http.StatusInternalServerError)
+		return
+	}
+
+	// Simplified thread display for now
+	w.Write([]byte(fmt.Sprintf(`<div class="thread-section">
+		<h3>Communication Threads</h3>
+		<p>Found %d threads for contact ID %d</p>
+		<div class="btn-group">
+			<button class="btn btn-primary">Add Message</button>
+			<button class="btn btn-secondary">Add Call Log</button>
+		</div>
+	</div>`, len(threads), contactID)))
+}
+
+// CreateMessage handles creating new messages (placeholder)
+func (h *Handlers) CreateMessage(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	contactID := vars["id"]
+
+	if r.Method == "GET" {
+		w.Write([]byte(fmt.Sprintf(`<div class="modal-content">
+			<div class="modal-header">
+				<h2>Send Message</h2>
+				<button class="modal-close" onclick="document.getElementById('message-modal').innerHTML = ''">×</button>
+			</div>
+			<form hx-post="/contacts/%s/message" hx-target="#message-modal" hx-swap="innerHTML">
+				<div class="form-group">
+					<label>Subject:</label>
+					<input type="text" name="subject">
+				</div>
+				<div class="form-group">
+					<label>Message:</label>
+					<textarea name="message" rows="4" required></textarea>
+				</div>
+				<div class="form-group">
+					<label>Type:</label>
+					<select name="type">
+						<option value="message">Message</option>
+						<option value="email">Email</option>
+						<option value="call">Call Log</option>
+					</select>
+				</div>
+				<div class="form-actions">
+					<button type="submit" class="btn btn-primary">Send</button>
+					<button type="button" class="btn btn-secondary" onclick="document.getElementById('message-modal').innerHTML = ''">Cancel</button>
+				</div>
+			</form>
+		</div>`, contactID)))
+		return
+	}
+
+	// Handle POST - placeholder for now
+	w.Write([]byte("Message sent successfully"))
 }

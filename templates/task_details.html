@@ -1,0 +1,150 @@
+<div class="modal-content">
+    <div class="modal-header">
+        <h2>{{.GetTaskTypeIcon}} {{.Title}}</h2>
+        <button class="modal-close" onclick="document.getElementById('task-details-modal').innerHTML = ''">×</button>
+    </div>
+    
+    <div class="task-details">
+        {{if .Description}}
+            <div class="task-detail-section">
+                <h4>Description</h4>
+                <p>{{.Description}}</p>
+            </div>
+        {{end}}
+        
+        <div class="task-detail-section">
+            <h4>Details</h4>
+            <div class="task-meta-grid">
+                <div class="meta-item">
+                    <span class="meta-label">Duration:</span>
+                    <span class="meta-value">⏱️ {{formatDuration .EstimatedDurationMins}}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Cost:</span>
+                    <span class="meta-value">💰 {{formatCurrency .MoneyCost}}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Priority:</span>
+                    <span class="meta-value priority-{{.Priority}}">{{priorityText .Priority}}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Energy:</span>
+                    <span class="meta-value energy-{{.EnergyLevel}}">{{energyText .EnergyLevel}}</span>
+                </div>
+                {{if .TaskType}}
+                    <div class="meta-item">
+                        <span class="meta-label">Type:</span>
+                        <span class="meta-value">{{.TaskType}}</span>
+                    </div>
+                {{end}}
+                {{if .Deadline}}
+                    <div class="meta-item">
+                        <span class="meta-label">Deadline:</span>
+                        <span class="meta-value">📅 {{formatDate .Deadline}} {{formatTime .Deadline}}</span>
+                    </div>
+                {{end}}
+            </div>
+        </div>
+        
+        {{if .IsEvent}}
+            <div class="task-detail-section">
+                <h4>Event Details</h4>
+                <div class="event-details">
+                    {{if .EventStart}}
+                        <div class="event-time">
+                            🕐 {{formatDate .EventStart}} {{formatTime .EventStart}}
+                            {{if .EventEnd}} - {{formatTime .EventEnd}}{{end}}
+                        </div>
+                    {{end}}
+                    {{if .EventLocation}}
+                        <div class="event-location">📍 {{.EventLocation}}</div>
+                    {{end}}
+                </div>
+            </div>
+        {{end}}
+        
+        {{if .Contacts}}
+            <div class="task-detail-section">
+                <h4>Contacts</h4>
+                <div class="task-contacts">
+                    {{range .Contacts}}
+                        <div class="contact-chip">
+                            👤 {{.Name}} ({{.Type}})
+                            {{if .Email}}<br><small>{{.Email}}</small>{{end}}
+                        </div>
+                    {{end}}
+                </div>
+            </div>
+        {{end}}
+        
+        {{if .Attachments}}
+            <div class="task-detail-section">
+                <h4>Attachments</h4>
+                <div class="task-attachments">
+                    {{range .Attachments}}
+                        <div class="attachment-item">
+                            <div class="attachment-icon">
+                                {{if eq .AttachmentType "image"}}🖼️{{else if eq .AttachmentType "document"}}📄{{else if eq .AttachmentType "audio"}}🎵{{else if eq .AttachmentType "video"}}🎬{{else}}📎{{end}}
+                            </div>
+                            <div class="attachment-info">
+                                <div class="attachment-name">{{.OriginalFilename}}</div>
+                                {{if .Description}}<div class="attachment-desc">{{.Description}}</div>{{end}}
+                            </div>
+                        </div>
+                    {{end}}
+                </div>
+            </div>
+        {{end}}
+        
+        {{if .Prerequisites}}
+            <div class="task-detail-section">
+                <h4>Prerequisites</h4>
+                <div class="prerequisites-list">
+                    {{range .Prerequisites}}
+                        <div class="prerequisite-item status-{{.Status}}">
+                            {{statusIcon .Status}} {{.Title}}
+                        </div>
+                    {{end}}
+                </div>
+            </div>
+        {{end}}
+        
+        {{if .Subtasks}}
+            <div class="task-detail-section">
+                <h4>Subtasks</h4>
+                <div class="subtasks-list">
+                    {{range .Subtasks}}
+                        <div class="subtask-item status-{{.Status}}">
+                            {{statusIcon .Status}} {{.Title}} ({{formatDuration .EstimatedDurationMins}})
+                        </div>
+                    {{end}}
+                </div>
+            </div>
+        {{end}}
+    </div>
+    
+    <div class="modal-actions">
+        <button class="status-btn status-{{.Status}}"
+                hx-post="/tasks/{{.ID}}/status"
+                hx-vals='{"status": "{{if eq .Status "pending"}}in_progress{{else if eq .Status "in_progress"}}done{{else}}pending{{end}}"}'
+                hx-target="#task-details-modal"
+                hx-swap="innerHTML">
+            {{statusIcon .Status}} Update Status
+        </button>
+        <button class="btn btn-secondary"
+                hx-get="/tasks/{{.ID}}/edit"
+                hx-target="#task-details-modal"
+                hx-swap="innerHTML">
+            ✏️ Edit
+        </button>
+        <button class="btn btn-secondary"
+                hx-get="/tasks/{{.ID}}/attach"
+                hx-target="#attachment-modal"
+                hx-trigger="click">
+            📎 Add Attachment
+        </button>
+    </div>
+</div>
+
+<!-- Attachment modal -->
+<div id="attachment-modal" class="modal"></div>

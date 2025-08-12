@@ -1,0 +1,59 @@
+<div class="contacts-section">
+    <div class="contacts-header">
+        <h3>📞 Contact Threads</h3>
+        <button class="btn btn-primary"
+                hx-get="/contacts/create"
+                hx-target="#contact-modal"
+                hx-trigger="click">
+            ➕ Add Contact
+        </button>
+    </div>
+    
+    <div class="contacts-list">
+        {{range .}}
+            <div class="contact-card" data-contact-id="{{.ID}}">
+                <div class="contact-info">
+                    <div class="contact-avatar">
+                        {{if .AvatarURL}}
+                            <img src="{{.AvatarURL}}" alt="{{.Name}}" />
+                        {{else}}
+                            <div class="contact-initials">{{index .Name 0}}</div>
+                        {{end}}
+                    </div>
+                    <div class="contact-details">
+                        <h4 class="contact-name">{{.Name}}</h4>
+                        <div class="contact-type">{{.Type}}</div>
+                        {{if .Email}}<div class="contact-email">📧 {{.Email}}</div>{{end}}
+                        {{if .Phone}}<div class="contact-phone">📱 {{.Phone}}</div>{{end}}
+                    </div>
+                </div>
+                
+                <div class="contact-actions">
+                    <button class="btn btn-secondary"
+                            hx-get="/contacts/{{.ID}}/threads"
+                            hx-target="#thread-viewer"
+                            hx-trigger="click">
+                        💬 Threads
+                    </button>
+                    <button class="btn btn-secondary"
+                            hx-get="/contacts/{{.ID}}/message"
+                            hx-target="#message-modal"
+                            hx-trigger="click">
+                        ✉️ Message
+                    </button>
+                </div>
+                
+                {{if .Notes}}
+                    <div class="contact-notes">{{.Notes}}</div>
+                {{end}}
+            </div>
+        {{end}}
+    </div>
+</div>
+
+<!-- Thread viewer -->
+<div id="thread-viewer" class="thread-section"></div>
+
+<!-- Modals -->
+<div id="contact-modal" class="modal"></div>
+<div id="message-modal" class="modal"></div>

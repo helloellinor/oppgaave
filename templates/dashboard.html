@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ADHD Task Manager</title>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -21,6 +20,79 @@
                 </div>
             </div>
 
+            <!-- Radar View Section -->
+            <div class="radar-section">
+                <div class="section-header">
+                    <h2>🎯 Task Radar</h2>
+                    <div class="view-toggles">
+                        <button class="btn btn-secondary active" id="radar-btn">
+                            🎯 Radar View
+                        </button>
+                        <button class="btn btn-secondary" id="list-btn">
+                            📋 List View
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="main-task-view">
+                    <!-- Show radar view by default -->
+                    <div class="radar-container">
+                        <div class="radar-screen">
+                            <div class="radar-grid">
+                                <!-- Concentric circles for time -->
+                                <div class="radar-circle radar-circle-1"></div>
+                                <div class="radar-circle radar-circle-2"></div>
+                                <div class="radar-circle radar-circle-3"></div>
+                                <div class="radar-circle radar-circle-4"></div>
+                                
+                                <!-- Cross lines for quadrants -->
+                                <div class="radar-line radar-line-horizontal"></div>
+                                <div class="radar-line radar-line-vertical"></div>
+                                
+                                <!-- Time labels -->
+                                <div class="radar-label radar-label-top">High Priority/Energy</div>
+                                <div class="radar-label radar-label-right">1 Week</div>
+                                <div class="radar-label radar-label-bottom">Low Priority/Energy</div>
+                                <div class="radar-label radar-label-left">Now</div>
+                                <div class="radar-label radar-label-center">Task Radar</div>
+                            </div>
+                            
+                            <!-- Tasks as radar blips -->
+                            {{range .Tasks}}
+                                <div class="radar-blip radar-blip-{{.TaskType}} {{.GetUrgencyColor}} {{if .IsBlocked}}blocked{{end}}"
+                                     style="left: {{.RadarPositionX}}%; bottom: {{.RadarPositionY}}%;"
+                                     data-task-id="{{.ID}}"
+                                     onclick="showTaskDetails({{.ID}})">
+                                    <div class="radar-blip-icon">{{.GetTaskTypeIcon}}</div>
+                                    <div class="radar-blip-title">{{.Title}}</div>
+                                    {{if .IsEvent}}
+                                        <div class="radar-blip-time">
+                                            {{if .EventStart}}{{formatTime .EventStart}}{{end}}
+                                        </div>
+                                    {{end}}
+                                    {{if .Contacts}}
+                                        <div class="radar-blip-contacts">
+                                            {{range .Contacts}}👤{{end}}
+                                        </div>
+                                    {{end}}
+                                </div>
+                            {{end}}
+                            
+                            <!-- Radar sweep animation -->
+                            <div class="radar-sweep"></div>
+                        </div>
+                        
+                        <!-- Timeline at bottom -->
+                        <div class="radar-timeline">
+                            <div class="timeline-marker timeline-now">Now</div>
+                            <div class="timeline-marker timeline-today">Today</div>
+                            <div class="timeline-marker timeline-tomorrow">Tomorrow</div>
+                            <div class="timeline-marker timeline-week">This Week</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="dashboard-grid">
                 <section class="today-tasks">
                     <h2>📅 Today's Focus</h2>
@@ -31,24 +103,82 @@
                     </div>
                 </section>
 
-                <section class="task-management">
-                    <div class="section-header">
-                        <h2>📋 All Tasks</h2>
-                        <button 
-                            class="btn btn-primary"
-                            hx-get="/tasks/create"
-                            hx-target="#create-task-modal"
-                            hx-trigger="click">
-                            ➕ Add Task
+                <section class="contacts-section">
+                    <div class="contacts-header">
+                        <h3>📞 Contact Threads</h3>
+                        <button class="btn btn-primary" onclick="showContacts()">
+                            ➕ Add Contact
                         </button>
                     </div>
                     
-                    <div id="task-list" hx-get="/tasks" hx-trigger="load">
-                        {{range .Tasks}}
-                            {{template "task_item.html" .}}
-                        {{end}}
+                    <div class="contacts-list">
+                        <!-- Show sample contacts -->
+                        <div class="contact-card">
+                            <div class="contact-info">
+                                <div class="contact-avatar">
+                                    <div class="contact-initials">D</div>
+                                </div>
+                                <div class="contact-details">
+                                    <h4 class="contact-name">Dr. Sarah Johnson</h4>
+                                    <div class="contact-type">person</div>
+                                    <div class="contact-email">📧 sarah.johnson@yogastudio.com</div>
+                                    <div class="contact-phone">📱 +1-555-0123</div>
+                                </div>
+                            </div>
+                            <div class="contact-actions">
+                                <button class="btn btn-secondary" onclick="showThreads(1)">
+                                    💬 Threads
+                                </button>
+                                <button class="btn btn-secondary" onclick="sendMessage(1)">
+                                    ✉️ Message
+                                </button>
+                            </div>
+                            <div class="contact-notes">Yoga instructor</div>
+                        </div>
+                        
+                        <div class="contact-card">
+                            <div class="contact-info">
+                                <div class="contact-avatar">
+                                    <div class="contact-initials">J</div>
+                                </div>
+                                <div class="contact-details">
+                                    <h4 class="contact-name">Jazz Venue</h4>
+                                    <div class="contact-type">venue</div>
+                                    <div class="contact-email">📧 info@jazzclub.com</div>
+                                    <div class="contact-phone">📱 +1-555-0456</div>
+                                </div>
+                            </div>
+                            <div class="contact-actions">
+                                <button class="btn btn-secondary" onclick="showThreads(3)">
+                                    💬 Threads
+                                </button>
+                                <button class="btn btn-secondary" onclick="sendMessage(3)">
+                                    ✉️ Message
+                                </button>
+                            </div>
+                            <div class="contact-notes">Downtown jazz club</div>
+                        </div>
                     </div>
                 </section>
+            </div>
+
+            <div class="task-management-section">
+                <div class="section-header">
+                    <h2>📋 All Tasks</h2>
+                    <button 
+                        class="btn btn-primary"
+                        hx-get="/tasks/create"
+                        hx-target="#create-task-modal"
+                        hx-trigger="click">
+                        ➕ Add Task
+                    </button>
+                </div>
+                
+                <div id="task-list" hx-get="/tasks" hx-trigger="load">
+                    {{range .Tasks}}
+                        {{template "task_item.html" .}}
+                    {{end}}
+                </div>
             </div>
         </main>
 
@@ -57,13 +187,84 @@
     </div>
 
     <script>
-        // Auto-refresh task list when tasks are updated
-        document.addEventListener('htmx:afterRequest', function(event) {
-            if (event.detail.xhr.status === 200 && event.detail.pathInfo.requestPath.includes('/tasks/')) {
-                htmx.trigger('#task-list', 'refresh');
-                htmx.trigger('#budget-widget', 'refresh');
+        // Simple JavaScript for radar/list view toggle and basic interactions
+        
+        // Task detail modal functionality
+        function showTaskDetails(taskId) {
+            // For demo purposes, show an alert with task info
+            fetch(`/tasks/${taskId}/details`)
+                .then(response => response.text())
+                .then(html => {
+                    const modal = document.createElement('div');
+                    modal.id = 'task-details-modal';
+                    modal.className = 'modal';
+                    modal.innerHTML = html;
+                    document.body.appendChild(modal);
+                    
+                    // Close modal when clicking outside
+                    modal.addEventListener('click', function(e) {
+                        if (e.target === modal) {
+                            modal.remove();
+                        }
+                    });
+                })
+                .catch(err => console.error('Error loading task details:', err));
+        }
+        
+        // Contact management functions
+        function showContacts() {
+            alert('Contact management feature coming soon!');
+        }
+        
+        function showThreads(contactId) {
+            alert(`Communication threads for contact ${contactId} coming soon!`);
+        }
+        
+        function sendMessage(contactId) {
+            alert(`Message interface for contact ${contactId} coming soon!`);
+        }
+        
+        // View toggle functionality (simplified without HTMX)
+        document.addEventListener('DOMContentLoaded', function() {
+            const radarBtn = document.getElementById('radar-btn');
+            const listBtn = document.getElementById('list-btn');
+            const mainView = document.getElementById('main-task-view');
+            
+            if (radarBtn && listBtn) {
+                radarBtn.addEventListener('click', function() {
+                    radarBtn.classList.add('active');
+                    listBtn.classList.remove('active');
+                    // Radar view is already loaded by default
+                });
+                
+                listBtn.addEventListener('click', function() {
+                    listBtn.classList.add('active');
+                    radarBtn.classList.remove('active');
+                    
+                    // Load list view
+                    fetch('/tasks')
+                        .then(response => response.text())
+                        .then(html => {
+                            mainView.innerHTML = html;
+                        })
+                        .catch(err => console.error('Error loading list view:', err));
+                });
             }
         });
+        
+        // Auto-refresh functionality (simplified)
+        setInterval(function() {
+            // Refresh budget widget
+            fetch('/budget-widget')
+                .then(response => response.text())
+                .then(html => {
+                    const budgetWidget = document.getElementById('budget-widget');
+                    if (budgetWidget) {
+                        budgetWidget.innerHTML = html;
+                    }
+                })
+                .catch(err => console.error('Error refreshing budget:', err));
+        }, 30000); // Every 30 seconds
     </script>
 </body>
 </html>
