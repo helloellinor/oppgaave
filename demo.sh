@@ -119,30 +119,20 @@ SELECT 'Mop floors', 'chore', parent_id, 25, 7, 5, 'pending' FROM vars;
 DROP TABLE vars;
 ENDSQL
 
-echo "� Building server..."
-if not go build -o oppgaave
+echo "🔨 Building server..."
+if ! go build -o oppgaave; then
     echo "❌ Failed to build server!"
     exit 1
-end
+fi
 
-echo "�🚀 Starting server..."
-./oppgaave
-
-# ADHD Task Manager Demo Script
-# This script demonstrates the core functionality of the task management system
-
-echo "🧠 ADHD Task Management System Demo"
-echo "=================================="
-
-echo ""
-echo "Starting server..."
-go run main.go &
+echo "🚀 Starting server..."
+./oppgaave &
 SERVER_PID=$!
 
 # Wait for server to start
 sleep 3
 
-echo ""
+# Test the API endpoints
 echo "📊 Testing API endpoints..."
 
 echo ""
