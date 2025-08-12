@@ -15,13 +15,33 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// TaskResponse represents a task response with additional data
+type TaskResponse struct {
+	Task       *models.Task
+	ParentTask *models.Task
+	Subtasks   []models.Task
+}
+
+// Handlers contains the application's HTTP handlers and their dependencies
 type Handlers struct {
 	db        *database.DB
 	templates *template.Template
+	router    *mux.Router
 }
 
-// New creates a new handlers instance
+// Router returns the configured router
+func (h *Handlers) Router() *mux.Router {
+	return h.router
+}
+
+// New creates a new handlers instance and sets up routes
 func New(db *database.DB) *Handlers {
+	r := mux.NewRouter()
+	h := &Handlers{
+		db:     db,
+		router: r,
+	}
+
 	// Load templates with custom functions
 	funcMap := template.FuncMap{
 		"formatDuration": func(minutes int) string {
@@ -47,30 +67,18 @@ func New(db *database.DB) *Handlers {
 			}
 			return t.Format("Jan 2")
 		},
-		"formatCurrency": func(coins int) string {
-			return fmt.Sprintf("$%d", coins)
-		},
-		"statusIcon": func(status models.TaskStatus) string {
-			switch status {
-			case models.StatusDone:
-				return "✓"
-			case models.StatusInProgress:
-				return "⏳"
-			case models.StatusBlocked:
-				return "🚫"
-			default:
-				return "○"
+		"formatDateTime": func(t *time.Time) string {
+			if t == nil {
+				return ""
 			}
+			return t.Format("Mon Jan 2 15:04")
 		},
-		"priorityText": func(priority int) string {
-			switch priority {
-			case 3:
-				return "High"
-			case 2:
-				return "Medium"
-			default:
-				return "Low"
+		"iterate": func(count int) []int {
+			var i []int
+			for j := 0; j < count; j++ {
+				i = append(i, j)
 			}
+			return i
 		},
 		"energyText": func(energy int) string {
 			switch energy {
@@ -97,18 +105,78 @@ func New(db *database.DB) *Handlers {
 			}
 			return (float64(spent) / float64(total)) * 100
 		},
+		"contains": func(slice interface{}, item interface{}) bool {
+			switch s := slice.(type) {
+			case []string:
+				for _, v := range s {
+					if v == item {
+						return true
+					}
+				}
+			case []int:
+				target, ok := item.(int)
+				if !ok {
+					return false
+				}
+				for _, v := range s {
+					if v == target {
+						return true
+					}
+				}
+			}
+			return false
+		},
+		"formatCurrency": func(amount int) string {
+			return fmt.Sprintf("$%d", amount)
+		},
+		"truncate": func(s string, l int) string {
+			if len(s) <= l {
+				return s
+			}
+			return s[:l] + "..."
+		},
+		"statusIcon": func(status models.TaskStatus) string {
+			switch status {
+			case models.StatusDone:
+				return "✓"
+			case models.StatusInProgress:
+				return "⏳"
+			case models.StatusBlocked:
+				return "🚫"
+			default:
+				return "○"
+			}
+		},
+		"priorityText": func(priority int) string {
+			switch priority {
+			case 3:
+				return "High"
+			case 2:
+				return "Medium"
+			default:
+				return "Low"
+			}
+		},
 	}
 
-	templates := template.Must(template.New("").Funcs(funcMap).ParseGlob("templates/*.html"))
+	h.templates = template.Must(template.New("").Funcs(funcMap).ParseGlob("templates/*.html"))
 
-	return &Handlers{
-		db:        db,
-		templates: templates,
-	}
+	// Register routes
+	r.HandleFunc("/", h.handleIndex).Methods("GET")
+	r.HandleFunc("/tasks/new", h.handleNewTask).Methods("GET")
+	r.HandleFunc("/tasks", h.handleCreateTask).Methods("POST")
+	r.HandleFunc("/tasks/{id}/toggle-status", h.handleToggleStatus).Methods("PUT")
+	r.HandleFunc("/tasks/quick-add", h.handleQuickAdd).Methods("GET", "POST")
+
+	// Serve static files
+	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	r.PathPrefix("/uploads/").Handler(http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))))
+
+	return h
 }
 
-// Dashboard renders the main dashboard
-func (h *Handlers) Dashboard(w http.ResponseWriter, r *http.Request) {
+// handleIndex renders the main dashboard
+func (h *Handlers) handleIndex(w http.ResponseWriter, r *http.Request) {
 	tasks, err := h.db.GetAllTasks()
 	if err != nil {
 		log.Printf("Error getting tasks: %v", err)
@@ -154,84 +222,66 @@ func (h *Handlers) Dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetTaskList returns the task list as HTML fragment for HTMX
-func (h *Handlers) GetTaskList(w http.ResponseWriter, r *http.Request) {
-	tasks, err := h.db.GetAllTasks()
-	if err != nil {
-		log.Printf("Error getting tasks: %v", err)
-		http.Error(w, "Failed to load tasks", http.StatusInternalServerError)
-		return
-	}
-
-	if err := h.templates.ExecuteTemplate(w, "task_list.html", tasks); err != nil {
+// handleNewTask returns the create task form
+func (h *Handlers) handleNewTask(w http.ResponseWriter, r *http.Request) {
+	if err := h.templates.ExecuteTemplate(w, "create_task_form.html", nil); err != nil {
 		log.Printf("Error executing template: %v", err)
-		http.Error(w, "Failed to render task list", http.StatusInternalServerError)
+		http.Error(w, "Failed to render form", http.StatusInternalServerError)
 	}
 }
 
-// CreateTask handles task creation
-func (h *Handlers) CreateTask(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		// Return the create task form
-		if err := h.templates.ExecuteTemplate(w, "create_task_form.html", nil); err != nil {
-			log.Printf("Error executing template: %v", err)
-			http.Error(w, "Failed to render form", http.StatusInternalServerError)
-		}
+// handleCreateTask handles task creation from a form submission
+func (h *Handlers) handleCreateTask(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
 		return
 	}
 
-	if r.Method == "POST" {
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, "Failed to parse form", http.StatusBadRequest)
-			return
-		}
+	duration, _ := strconv.Atoi(r.FormValue("duration"))
+	if duration == 0 {
+		duration = 30 // default
+	}
 
-		duration, _ := strconv.Atoi(r.FormValue("duration"))
-		if duration == 0 {
-			duration = 30 // default
-		}
+	priority, _ := strconv.Atoi(r.FormValue("priority"))
+	if priority == 0 {
+		priority = 2 // default medium
+	}
 
-		priority, _ := strconv.Atoi(r.FormValue("priority"))
-		if priority == 0 {
-			priority = 2 // default medium
-		}
+	energy, _ := strconv.Atoi(r.FormValue("energy"))
+	if energy == 0 {
+		energy = 2 // default medium
+	}
 
-		energy, _ := strconv.Atoi(r.FormValue("energy"))
-		if energy == 0 {
-			energy = 2 // default medium
-		}
+	difficulty, _ := strconv.Atoi(r.FormValue("difficulty"))
+	if difficulty == 0 {
+		difficulty = 2 // default medium
+	}
 
-		difficulty, _ := strconv.Atoi(r.FormValue("difficulty"))
-		if difficulty == 0 {
-			difficulty = 2 // default medium
-		}
+	req := &models.CreateTaskRequest{
+		Title:                 r.FormValue("title"),
+		Description:           r.FormValue("description"),
+		EstimatedDurationMins: duration,
+		Priority:              priority,
+		EnergyLevel:           energy,
+		Difficulty:            difficulty,
+	}
 
-		req := &models.CreateTaskRequest{
-			Title:                 r.FormValue("title"),
-			Description:           r.FormValue("description"),
-			EstimatedDurationMins: duration,
-			Priority:              priority,
-			EnergyLevel:           energy,
-			Difficulty:            difficulty,
-		}
+	task, err := h.db.CreateTask(req)
+	if err != nil {
+		log.Printf("Error creating task: %v", err)
+		http.Error(w, "Failed to create task", http.StatusInternalServerError)
+		return
+	}
 
-		task, err := h.db.CreateTask(req)
-		if err != nil {
-			log.Printf("Error creating task: %v", err)
-			http.Error(w, "Failed to create task", http.StatusInternalServerError)
-			return
-		}
-
-		// Return the new task as HTML fragment
-		if err := h.templates.ExecuteTemplate(w, "task_item.html", task); err != nil {
-			log.Printf("Error executing template: %v", err)
-			http.Error(w, "Failed to render task", http.StatusInternalServerError)
-		}
+	// Return the new task as HTML fragment
+	if err := h.templates.ExecuteTemplate(w, "task_item.html", task); err != nil {
+		log.Printf("Error executing template: %v", err)
+		http.Error(w, "Failed to render task", http.StatusInternalServerError)
 	}
 }
 
-// UpdateTaskStatus handles task status updates via HTMX
-func (h *Handlers) UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
+// handleToggleStatus handles task status updates via HTMX
+func (h *Handlers) handleToggleStatus(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	taskID, err := strconv.Atoi(vars["id"])
 	if err != nil {
@@ -266,35 +316,46 @@ func (h *Handlers) UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetBudgetWidget returns the budget widget as HTML fragment
-func (h *Handlers) GetBudgetWidget(w http.ResponseWriter, r *http.Request) {
-	today := time.Now()
-	budget, err := h.db.GetDailyBudget(today)
-	if err != nil {
-		log.Printf("Error getting daily budget: %v", err)
-		http.Error(w, "Failed to load budget", http.StatusInternalServerError)
-		return
-	}
-
-	// Calculate current spent amount from pending/in-progress tasks
-	tasks, err := h.db.GetAllTasks()
-	if err != nil {
-		log.Printf("Error getting tasks: %v", err)
-		http.Error(w, "Failed to load tasks", http.StatusInternalServerError)
-		return
-	}
-
-	spentCoins := 0
-	for _, task := range tasks {
-		if task.Status == models.StatusPending || task.Status == models.StatusInProgress {
-			spentCoins += task.MoneyCost
+// handleQuickAdd handles quick task creation
+func (h *Handlers) handleQuickAdd(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		if err := h.templates.ExecuteTemplate(w, "quick_add.html", nil); err != nil {
+			log.Printf("Error executing template: %v", err)
+			http.Error(w, "Failed to render form", http.StatusInternalServerError)
 		}
+		return
 	}
-	budget.SpentCoins = spentCoins
 
-	if err := h.templates.ExecuteTemplate(w, "budget_widget.html", budget); err != nil {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	title := r.FormValue("title")
+	if title == "" {
+		http.Error(w, "Title is required", http.StatusBadRequest)
+		return
+	}
+
+	req := &models.CreateTaskRequest{
+		Title:                 title,
+		EstimatedDurationMins: 30, // default
+		Priority:              2,  // default medium
+		EnergyLevel:           2,  // default medium
+		Difficulty:            2,  // default medium
+	}
+
+	task, err := h.db.CreateTask(req)
+	if err != nil {
+		log.Printf("Error creating task: %v", err)
+		http.Error(w, "Failed to create task", http.StatusInternalServerError)
+		return
+	}
+
+	// Return the new task as HTML fragment
+	if err := h.templates.ExecuteTemplate(w, "task_item.html", task); err != nil {
 		log.Printf("Error executing template: %v", err)
-		http.Error(w, "Failed to render budget widget", http.StatusInternalServerError)
+		http.Error(w, "Failed to render task", http.StatusInternalServerError)
 	}
 }
 

@@ -1,0 +1,9 @@
+<!-- Difficulty Field -->
+<div class="level-indicator" 
+     hx-put="/tasks/{{.ID}}/difficulty"
+     hx-trigger="click"
+     hx-swap="outerHTML">
+    {{range $i := iterate 10}}
+        <span class="level {{if le $i $.Difficulty}}active{{end}}"></span>
+    {{end}}
+</div>

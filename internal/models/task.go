@@ -17,27 +17,54 @@ const (
 	StatusBlocked    TaskStatus = "blocked"
 )
 
+// TaskType represents the category of the task
+type TaskType string
+
+const (
+	TypeEvent       TaskType = "event"       // 🎭
+	TypeAppointment TaskType = "appointment" // 👨‍⚕️
+	TypeChore       TaskType = "chore"       // 🧹
+	TypeWorkout     TaskType = "workout"     // 💪
+	TypeWork        TaskType = "work"        // 💼
+	TypeSocial      TaskType = "social"      // 👥
+	TypeOther       TaskType = "other"       // ✨
+)
+
+// Attachment represents a file or link attached to a task
+type Attachment struct {
+	ID        int       `json:"id" db:"id"`
+	TaskID    int       `json:"task_id" db:"task_id"`
+	Name      string    `json:"name" db:"name"`
+	Type      string    `json:"type" db:"type"`
+	Path      string    `json:"path" db:"path"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+}
+
 // Task represents a task in our ADHD-friendly system
 type Task struct {
-	ID                     int       `json:"id" db:"id"`
-	Title                  string    `json:"title" db:"title"`
-	Description            string    `json:"description" db:"description"`
-	ParentID               *int      `json:"parent_id" db:"parent_id"`
-	EstimatedDurationMins  int       `json:"estimated_duration_minutes" db:"estimated_duration_minutes"`
-	Deadline               *time.Time `json:"deadline" db:"deadline"`
-	Priority               int       `json:"priority" db:"priority"`
-	Status                 TaskStatus `json:"status" db:"status"`
-	Tags                   Tags      `json:"tags" db:"tags"`
-	EnergyLevel            int       `json:"energy_level" db:"energy_level"`
-	Difficulty             int       `json:"difficulty" db:"difficulty"`
-	MoneyCost              int       `json:"money_cost" db:"money_cost"`
-	CreatedAt              time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt              time.Time `json:"updated_at" db:"updated_at"`
-	CompletedAt            *time.Time `json:"completed_at" db:"completed_at"`
-	
+	ID                    int        `json:"id" db:"id"`
+	Title                 string     `json:"title" db:"title"`
+	Description           string     `json:"description" db:"description"`
+	Type                  TaskType   `json:"type" db:"type"`
+	ParentID              *int       `json:"parent_id" db:"parent_id"`
+	EstimatedDurationMins int        `json:"estimated_duration_minutes" db:"estimated_duration_minutes"`
+	StartTime             *time.Time `json:"start_time" db:"start_time"`
+	Deadline              *time.Time `json:"deadline" db:"deadline"`
+	Priority              int        `json:"priority" db:"priority"`
+	Status                TaskStatus `json:"status" db:"status"`
+	Tags                  Tags       `json:"tags" db:"tags"`
+	EnergyLevel           int        `json:"energy_level" db:"energy_level"`
+	Difficulty            int        `json:"difficulty" db:"difficulty"`
+	MoneyCost             int        `json:"money_cost" db:"money_cost"`
+	Location              string     `json:"location" db:"location"`
+	CreatedAt             time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt             time.Time  `json:"updated_at" db:"updated_at"`
+	CompletedAt           *time.Time `json:"completed_at" db:"completed_at"`
+
 	// Computed fields
-	Subtasks      []Task `json:"subtasks,omitempty"`
-	Prerequisites []Task `json:"prerequisites,omitempty"`
+	Subtasks      []Task       `json:"subtasks,omitempty"`
+	Prerequisites []Task       `json:"prerequisites,omitempty"`
+	Attachments   []Attachment `json:"attachments,omitempty"`
 }
 
 // Tags represents a list of task tags
@@ -57,7 +84,7 @@ func (t *Tags) Scan(value interface{}) error {
 		*t = Tags{}
 		return nil
 	}
-	
+
 	switch v := value.(type) {
 	case string:
 		return json.Unmarshal([]byte(v), t)
@@ -70,12 +97,12 @@ func (t *Tags) Scan(value interface{}) error {
 
 // DailyBudget represents the time/money budget for a day
 type DailyBudget struct {
-	ID              int       `json:"id" db:"id"`
-	Date            time.Time `json:"date" db:"date"`
-	TotalBudgetCoins int      `json:"total_budget_coins" db:"total_budget_coins"`
-	SpentCoins      int       `json:"spent_coins" db:"spent_coins"`
-	CreatedAt       time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at" db:"updated_at"`
+	ID               int       `json:"id" db:"id"`
+	Date             time.Time `json:"date" db:"date"`
+	TotalBudgetCoins int       `json:"total_budget_coins" db:"total_budget_coins"`
+	SpentCoins       int       `json:"spent_coins" db:"spent_coins"`
+	CreatedAt        time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at" db:"updated_at"`
 }
 
 // RemainingCoins calculates remaining budget
@@ -93,7 +120,7 @@ type TaskSchedule struct {
 	ActualStartTime  *time.Time `json:"actual_start_time" db:"actual_start_time"`
 	ActualEndTime    *time.Time `json:"actual_end_time" db:"actual_end_time"`
 	CreatedAt        time.Time  `json:"created_at" db:"created_at"`
-	
+
 	// Associated task
 	Task *Task `json:"task,omitempty"`
 }
@@ -122,7 +149,7 @@ type CreateTaskRequest struct {
 // CalculateMoneyCost calculates the "cost" of a task in our money allegory
 func (t *Task) CalculateMoneyCost() int {
 	baseCost := t.EstimatedDurationMins
-	
+
 	// Apply energy multiplier
 	energyMultiplier := 1.0
 	switch t.EnergyLevel {
@@ -133,7 +160,7 @@ func (t *Task) CalculateMoneyCost() int {
 	case 3: // High energy
 		energyMultiplier = 1.5
 	}
-	
+
 	// Apply difficulty multiplier
 	difficultyMultiplier := 1.0
 	switch t.Difficulty {
@@ -144,7 +171,7 @@ func (t *Task) CalculateMoneyCost() int {
 	case 3: // Hard
 		difficultyMultiplier = 1.3
 	}
-	
+
 	// Apply priority multiplier (higher priority costs more to reflect urgency)
 	priorityMultiplier := 1.0
 	switch t.Priority {
@@ -155,7 +182,7 @@ func (t *Task) CalculateMoneyCost() int {
 	case 3: // High priority
 		priorityMultiplier = 1.2
 	}
-	
+
 	cost := float64(baseCost) * energyMultiplier * difficultyMultiplier * priorityMultiplier
 	return int(cost)
 }
@@ -172,9 +199,9 @@ func (t *Task) GetUrgencyColor() string {
 			return "low-priority"
 		}
 	}
-	
+
 	timeUntilDeadline := time.Until(*t.Deadline)
-	
+
 	if timeUntilDeadline < 0 {
 		return "overdue"
 	} else if timeUntilDeadline < 24*time.Hour {
@@ -182,7 +209,7 @@ func (t *Task) GetUrgencyColor() string {
 	} else if timeUntilDeadline < 3*24*time.Hour {
 		return "soon"
 	}
-	
+
 	return "normal"
 }
 

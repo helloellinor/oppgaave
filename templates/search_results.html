@@ -1,0 +1,43 @@
+<div class="search-results">
+    {{if .Tasks}}
+        {{range .Tasks}}
+        <div class="search-result-item {{.Type}}"
+             hx-get="/tasks/{{.ID}}"
+             hx-target="#task-detail"
+             hx-push-url="true">
+            <div class="result-icon">
+                {{if eq .Type "event"}}🎭
+                {{else if eq .Type "appointment"}}👨‍⚕️
+                {{else if eq .Type "chore"}}🧹
+                {{else if eq .Type "workout"}}💪
+                {{else if eq .Type "work"}}💼
+                {{else if eq .Type "social"}}👥
+                {{else}}✨{{end}}
+            </div>
+            <div class="result-content">
+                <h4>{{.Title}}</h4>
+                {{if .Description}}
+                <p class="result-description">{{truncate .Description 100}}</p>
+                {{end}}
+                {{if .Location}}
+                <p class="result-location">📍 {{.Location}}</p>
+                {{end}}
+                <div class="result-meta">
+                    {{if .StartTime}}
+                    <span class="result-time">🕒 {{formatDateTime .StartTime}}</span>
+                    {{else if .Deadline}}
+                    <span class="result-time">⏰ Due {{formatDateTime .Deadline}}</span>
+                    {{end}}
+                    {{if .Attachments}}
+                    <span class="result-attachments">📎 {{len .Attachments}}</span>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+        {{end}}
+    {{else}}
+        <div class="no-results">
+            <p>No tasks found matching your search</p>
+        </div>
+    {{end}}
+</div>

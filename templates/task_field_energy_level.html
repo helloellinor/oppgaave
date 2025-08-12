@@ -1,0 +1,9 @@
+<!-- Energy Level Field -->
+<div class="level-indicator" 
+     hx-put="/tasks/{{.ID}}/energy"
+     hx-trigger="click"
+     hx-swap="outerHTML">
+    {{range $i := iterate 10}}
+        <span class="level {{if le $i $.EnergyLevel}}active{{end}}"></span>
+    {{end}}
+</div>

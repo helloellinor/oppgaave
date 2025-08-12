@@ -3,31 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ADHD Task Manager</title>
+    <title>Task Radar</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <div class="container">
         <header class="header">
-            <h1>🧠 ADHD Task Manager</h1>
-            <div class="current-time">{{.CurrentTime}}</div>
+            <h1>🎯 Task Radar</h1>
+            <div class="current-time" 
+                 hx-get="/current-time" 
+                 hx-trigger="load, every 60s">
+                {{.CurrentTime}}
+            </div>
+            <button class="new-task-btn"
+                    hx-get="/tasks/new"
+                    hx-target="#task-detail"
+                    hx-swap="innerHTML"
+                    hx-push-url="/tasks/new">
+                + New Task
+            </button>
         </header>
 
         <main class="main-content">
-            <div class="budget-section">
-                <div id="budget-widget" hx-get="/budget-widget" hx-trigger="load, every 30s">
-                    {{template "budget_widget.html" .Budget}}
+            <div class="radar-grid">
+                <div class="timeline-section">
+                    <div id="timeline-view"
+                         hx-get="/timeline"
+                         hx-trigger="load, every 5m"
+                         hx-swap="innerHTML">
+                        {{template "timeline_view.html" .}}
+                    </div>
+                </div>
+                
+                <div class="task-detail-section">
+                    <div id="task-detail" class="task-detail">
+                        <!-- Task details will be loaded here -->
+                        <div class="empty-state">
+                            <p>Select a task to view details</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="dashboard-grid">
-                <section class="today-tasks">
-                    <h2>📅 Today's Focus</h2>
-                    <div class="task-timeline">
-                        {{range .TodayTasks}}
-                            {{template "task_item.html" .}}
-                        {{end}}
+            <div class="upcoming-tasks">
+                <h2>📡 On Your Radar</h2>
+                <div class="task-grid"
+                     hx-get="/tasks/upcoming"
+                     hx-trigger="load, every 5m"
+                     hx-swap="innerHTML">
+                    <!-- Upcoming tasks will be loaded here -->
+                </div>
+            </div>
+        </main>
+
+        <div id="quick-add" 
+             class="quick-add" 
+             hx-get="/tasks/quick-add"
+             hx-trigger="keydown[key=='n' && !isInput(event.target)]"
+             hx-target="#task-detail"
+             hx-swap="innerHTML">
+        </div>
+    </div>
+</body>
+</html>
                     </div>
                 </section>
 

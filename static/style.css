@@ -1,7 +1,7 @@
 /* ADHD-Friendly Task Manager Styles */
 
 :root {
-    /* Color palette - calming and focused */
+    /* Base colors */
     --primary-color: #4f46e5;
     --secondary-color: #06b6d4;
     --success-color: #10b981;
@@ -14,10 +14,313 @@
     --done-color: #10b981;
     --blocked-color: #ef4444;
     
+    /* Task type colors */
+    --event-color: #8b5cf6;
+    --appointment-color: #ec4899;
+    --chore-color: #6b7280;
+    --workout-color: #f97316;
+    --work-color: #0ea5e9;
+    --social-color: #14b8a6;
+    --other-color: #8b5cf6;
+    
     /* Priority colors */
     --low-priority: #94a3b8;
     --medium-priority: #f59e0b;
     --high-priority: #ef4444;
+}
+
+/* Global styles */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* Task Radar styles */
+.radar-grid {
+    display: grid;
+    grid-template-columns: minmax(300px, 2fr) 3fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    height: calc(100vh - 150px);
+}
+
+.timeline-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 1rem;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+.timeline-item {
+    display: flex;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s;
+}
+
+.timeline-item:hover {
+    transform: translateX(5px);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.timeline-item.event { border-left: 4px solid var(--event-color); }
+.timeline-item.appointment { border-left: 4px solid var(--appointment-color); }
+.timeline-item.chore { border-left: 4px solid var(--chore-color); }
+.timeline-item.workout { border-left: 4px solid var(--workout-color); }
+.timeline-item.work { border-left: 4px solid var(--work-color); }
+.timeline-item.social { border-left: 4px solid var(--social-color); }
+.timeline-item.other { border-left: 4px solid var(--other-color); }
+
+.timeline-time {
+    min-width: 60px;
+    font-size: 0.875rem;
+    color: var(--secondary-color);
+}
+
+.timeline-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    flex: 1;
+}
+
+.timeline-icon {
+    font-size: 1.5rem;
+}
+
+.timeline-details {
+    flex: 1;
+}
+
+.timeline-details h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+}
+
+.timeline-location,
+.timeline-attachments {
+    font-size: 0.875rem;
+    opacity: 0.7;
+}
+
+/* Task Detail Section */
+.task-detail-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 1rem;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+.empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    opacity: 0.5;
+}
+
+/* Quick Add Form */
+.quick-add {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--primary-color);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    transform: translateY(150%);
+    transition: transform 0.3s;
+}
+
+.quick-add.active {
+    transform: translateY(0);
+}
+
+/* Task cards */
+.task-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.task-card {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    padding: 1rem;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.task-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.task-card.event { border-left: 4px solid var(--event-color); }
+.task-card.appointment { border-left: 4px solid var(--appointment-color); }
+.task-card.chore { border-left: 4px solid var(--chore-color); }
+.task-card.workout { border-left: 4px solid var(--workout-color); }
+.task-card.work { border-left: 4px solid var(--work-color); }
+.task-card.social { border-left: 4px solid var(--social-color); }
+.task-card.other { border-left: 4px solid var(--other-color); }
+
+.task-icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.task-time {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-size: 0.875rem;
+    color: var(--secondary-color);
+}
+
+.task-location {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.attachment-indicator {
+    position: absolute;
+    bottom: 0.5rem;
+    right: 0.5rem;
+    font-size: 0.875rem;
+    opacity: 0.7;
+}
+
+/* Task detail page */
+.task-detail {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.task-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 1rem;
+}
+
+.task-timing > div {
+    margin-bottom: 0.5rem;
+}
+
+.task-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.stat {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+}
+
+.task-content {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2rem;
+    border-radius: 1rem;
+    margin-bottom: 2rem;
+}
+
+.description {
+    margin-bottom: 1.5rem;
+    white-space: pre-wrap;
+}
+
+.tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.tag {
+    background: var(--primary-color);
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.875rem;
+}
+
+.attachments {
+    margin-bottom: 1.5rem;
+}
+
+.attachment-list {
+    list-style: none;
+    padding: 0;
+}
+
+.attachment-item {
+    padding: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.attachment-item:last-child {
+    border-bottom: none;
+}
+
+.subtask-list {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 1rem;
+}
+
+.subtask-item {
+    padding: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.subtask-item:last-child {
+    border-bottom: none;
+}
+
+.task-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+.task-actions button {
+    padding: 0.5rem 1.5rem;
+    border-radius: 0.5rem;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: opacity 0.2s;
+}
+
+.task-actions button:hover {
+    opacity: 0.9;
+}
+
+.status-btn {
+    background: var(--primary-color);
+}
+
+.edit-btn {
+    background: var(--secondary-color);
+}
+
+.delete-btn {
+    background: var(--danger-color);
+}
     
     /* Urgency colors */
     --overdue: #dc2626;

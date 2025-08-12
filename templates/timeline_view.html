@@ -1,0 +1,36 @@
+{{range .Tasks}}
+<div class="timeline-item {{.Type}}" 
+     hx-get="/tasks/{{.ID}}/detail"
+     hx-target="#task-detail"
+     hx-swap="innerHTML"
+     hx-trigger="click"
+     hx-push-url="/tasks/{{.ID}}">
+    <div class="timeline-time">
+        {{if .StartTime}}
+            {{.StartTime.Format "15:04"}}
+        {{else if .Deadline}}
+            Due {{.Deadline.Format "15:04"}}
+        {{end}}
+    </div>
+    <div class="timeline-content">
+        <div class="timeline-icon">
+            {{if eq .Type "event"}}🎭
+            {{else if eq .Type "appointment"}}👨‍⚕️
+            {{else if eq .Type "chore"}}🧹
+            {{else if eq .Type "workout"}}💪
+            {{else if eq .Type "work"}}💼
+            {{else if eq .Type "social"}}👥
+            {{else}}✨{{end}}
+        </div>
+        <div class="timeline-details">
+            <h3>{{.Title}}</h3>
+            {{if .Location}}
+            <div class="timeline-location">📍 {{.Location}}</div>
+            {{end}}
+            {{if .Attachments}}
+            <div class="timeline-attachments">📎 {{len .Attachments}}</div>
+            {{end}}
+        </div>
+    </div>
+</div>
+{{end}}

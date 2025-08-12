@@ -1,24 +1,55 @@
 -- ADHD Task Management System Database Schema
 
--- Tasks table with recursive structure
-CREATE TABLE IF NOT EXISTS tasks (
+-- Drop existing tables if they exist
+DROP TABLE IF EXISTS attachments;
+DROP TABLE IF EXISTS tasks;
+
+CREATE TABLE tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
+    title VARCHAR(255) NOT NULL,
     description TEXT,
-    parent_id INTEGER, -- For subtasks
-    estimated_duration_minutes INTEGER DEFAULT 30,
+    type VARCHAR(50) NOT NULL DEFAULT 'other',
+    parent_id INTEGER REFERENCES tasks(id),
+    estimated_duration_minutes INTEGER DEFAULT 0,
+    start_time DATETIME,
     deadline DATETIME,
-    priority INTEGER DEFAULT 1, -- 1=low, 2=medium, 3=high
-    status TEXT DEFAULT 'pending', -- pending, in_progress, done, blocked
-    tags TEXT, -- JSON array of tags
-    energy_level INTEGER DEFAULT 2, -- 1=low, 2=medium, 3=high energy needed
-    difficulty INTEGER DEFAULT 2, -- 1=easy, 2=medium, 3=hard
-    money_cost INTEGER DEFAULT 0, -- Time budget cost in "coins"
+    priority INTEGER DEFAULT 0,
+    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    tags TEXT DEFAULT '[]',
+    energy_level INTEGER DEFAULT 5,
+    difficulty INTEGER DEFAULT 5,
+    money_cost INTEGER DEFAULT 0,
+    location TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    completed_at DATETIME,
-    FOREIGN KEY (parent_id) REFERENCES tasks(id)
+    completed_at DATETIME
 );
+
+-- Create indexes for better performance
+CREATE INDEX idx_tasks_start_time ON tasks(start_time);
+CREATE INDEX idx_tasks_deadline ON tasks(deadline);
+CREATE INDEX idx_tasks_type ON tasks(type);
+CREATE INDEX idx_tasks_status ON tasks(status);
+CREATE INDEX idx_tasks_parent_id ON tasks(parent_id);
+CREATE INDEX idx_tasks_priority ON tasks(priority);
+CREATE INDEX idx_tasks_created_at ON tasks(created_at);
+
+-- Search indexes
+CREATE INDEX idx_tasks_title ON tasks(title);
+CREATE INDEX idx_tasks_description ON tasks(description);
+
+-- Attachments table
+CREATE TABLE attachments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    path TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_attachments_task_id ON attachments(task_id);
+CREATE INDEX idx_attachments_type ON attachments(type);
 
 -- Task prerequisites (DAG structure)
 CREATE TABLE IF NOT EXISTS task_prerequisites (

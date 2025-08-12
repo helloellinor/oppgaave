@@ -1,0 +1,30 @@
+<div class="quick-add-form">
+    <form hx-post="/tasks/quick-add" 
+          hx-target="#task-detail"
+          hx-swap="innerHTML">
+        <input type="text" 
+               name="title" 
+               placeholder="What's on your mind?"
+               autofocus>
+        
+        <select name="type" required>
+            <option value="event">🎭 Event</option>
+            <option value="appointment">👨‍⚕️ Appointment</option>
+            <option value="chore">🧹 Chore</option>
+            <option value="workout">💪 Workout</option>
+            <option value="work">💼 Work</option>
+            <option value="social">👥 Social</option>
+            <option value="other">✨ Other</option>
+        </select>
+
+        <input type="datetime-local" 
+               name="start_time" 
+               placeholder="When?">
+        
+        <button type="submit">Add Task</button>
+        <button type="button" 
+                onclick="this.closest('.quick-add').remove()">
+            Cancel
+        </button>
+    </form>
+</div>

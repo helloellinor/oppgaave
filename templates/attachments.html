@@ -1,0 +1,18 @@
+{{range .Task.Attachments}}
+<li class="attachment-item">
+    <a href="/attachments/{{.ID}}" target="_blank" class="attachment-link">
+        {{if eq .Type "application/pdf"}}📄
+        {{else if contains .Type "image/"}}🖼️
+        {{else if contains .Type "audio/"}}🎵
+        {{else if contains .Type "video/"}}🎬
+        {{else}}📎{{end}}
+        {{.Name}}
+    </a>
+    <button class="delete-attachment"
+            hx-delete="/attachments/{{.ID}}"
+            hx-target="closest li"
+            hx-confirm="Delete this attachment?">×</button>
+</li>
+{{else}}
+<li class="no-attachments">No attachments yet</li>
+{{end}}

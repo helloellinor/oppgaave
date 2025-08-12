@@ -1,0 +1,163 @@
+<div class="task-detail-content">
+    <div class="task-header">
+        <h2>
+            {{if eq .Task.Type "event"}}🎭
+            {{else if eq .Task.Type "appointment"}}👨‍⚕️
+            {{else if eq .Task.Type "chore"}}🧹
+            {{else if eq .Task.Type "workout"}}💪
+            {{else if eq .Task.Type "work"}}💼
+            {{else if eq .Task.Type "social"}}👥
+            {{else}}✨{{end}}
+            {{.Task.Title}}
+        </h2>
+    </div>
+
+    <div class="task-meta">
+        <div class="task-timing">
+            {{if .Task.StartTime}}
+            <div class="start-time">
+                <strong>Starts:</strong> {{.Task.StartTime.Format "Mon Jan 2 15:04"}}
+            </div>
+            {{end}}
+            {{if .Task.Deadline}}
+            <div class="deadline">
+                <strong>Due:</strong> {{.Task.Deadline.Format "Mon Jan 2 15:04"}}
+            </div>
+            {{end}}
+            {{if .Task.EstimatedDurationMins}}
+            <div class="duration">
+                <strong>Duration:</strong> {{.Task.EstimatedDurationMins}} minutes
+            </div>
+            {{end}}
+        </div>
+        
+        {{if .Task.Location}}
+        <div class="location">
+            <strong>📍 Location:</strong> {{.Task.Location}}
+        </div>
+        {{end}}
+
+        <div class="task-stats">
+            <div class="stat">
+                <strong>Energy:</strong>
+                <div class="level-indicator" 
+                     hx-put="/tasks/{{.Task.ID}}/energy"
+                     hx-trigger="click"
+                     hx-swap="outerHTML">
+                    {{range $i := iterate 10}}
+                        <span class="level {{if le $i $.Task.EnergyLevel}}active{{end}}"></span>
+                    {{end}}
+                </div>
+            </div>
+            <div class="stat">
+                <strong>Difficulty:</strong>
+                <div class="level-indicator" 
+                     hx-put="/tasks/{{.Task.ID}}/difficulty"
+                     hx-trigger="click"
+                     hx-swap="outerHTML">
+                    {{range $i := iterate 10}}
+                        <span class="level {{if le $i $.Task.Difficulty}}active{{end}}"></span>
+                    {{end}}
+                </div>
+            </div>
+            <div class="stat">
+                <strong>Cost:</strong>
+                <span hx-get="/tasks/{{.Task.ID}}/edit-cost"
+                      hx-trigger="click"
+                      hx-target="this">${{.Task.MoneyCost}}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="task-content">
+        <div class="description"
+             hx-get="/tasks/{{.Task.ID}}/edit-description"
+             hx-trigger="dblclick"
+             hx-target="this">
+            {{.Task.Description}}
+        </div>
+
+        <div class="tags">
+            {{range .Task.Tags}}
+            <span class="tag">{{.}}</span>
+            {{end}}
+            <button class="add-tag-btn"
+                    hx-get="/tasks/{{.Task.ID}}/add-tag"
+                    hx-target="next div">+</button>
+            <div></div>
+        </div>
+
+        <div class="attachments">
+            <h3>📎 Attachments</h3>
+            <ul class="attachment-list"
+                hx-get="/tasks/{{.Task.ID}}/attachments"
+                hx-trigger="load, attachmentAdded from:body">
+                {{range .Task.Attachments}}
+                <li class="attachment-item">
+                    <a href="/attachments/{{.ID}}" target="_blank">{{.Name}}</a>
+                    <button class="delete-attachment"
+                            hx-delete="/attachments/{{.ID}}"
+                            hx-target="closest li"
+                            hx-swap="outerHTML"
+                            hx-confirm="Delete this attachment?">×</button>
+                </li>
+                {{end}}
+            </ul>
+            <form class="upload-form"
+                  hx-post="/tasks/{{.Task.ID}}/attachments"
+                  hx-encoding="multipart/form-data"
+                  hx-trigger="change"
+                  hx-target=".attachment-list"
+                  hx-swap="innerHTML">
+                <input type="file" name="attachment" id="attachment" multiple>
+                <label for="attachment" class="upload-btn">+ Add Files</label>
+            </form>
+        </div>
+
+        <div class="subtasks">
+            <h3>📝 Subtasks</h3>
+            <ul class="subtask-list"
+                hx-get="/tasks/{{.Task.ID}}/subtasks"
+                hx-trigger="load, subtaskAdded from:body">
+                {{range .Task.Subtasks}}
+                <li class="subtask-item">
+                    <input type="checkbox" 
+                           {{if eq .Status "done"}}checked{{end}}
+                           hx-put="/tasks/{{.ID}}/toggle-status"
+                           hx-swap="outerHTML">
+                    <span hx-get="/tasks/{{.ID}}"
+                          hx-trigger="click"
+                          hx-target="#task-detail"
+                          hx-push-url="true">{{.Title}}</span>
+                </li>
+                {{end}}
+            </ul>
+            <form class="quick-add-subtask"
+                  hx-post="/tasks/{{.Task.ID}}/subtasks"
+                  hx-target=".subtask-list"
+                  hx-swap="beforeend">
+                <input type="text" name="title" placeholder="Add a subtask..." />
+            </form>
+        </div>
+    </div>
+
+    <div class="task-actions">
+        <button class="status-btn {{.Task.Status}}"
+                hx-put="/tasks/{{.Task.ID}}/toggle-status"
+                hx-target="this">
+            {{.Task.Status}}
+        </button>
+        <button class="edit-btn"
+                hx-get="/tasks/{{.Task.ID}}/edit"
+                hx-target="#task-detail">
+            Edit
+        </button>
+        <button class="delete-btn"
+                hx-delete="/tasks/{{.Task.ID}}"
+                hx-confirm="Are you sure you want to delete this task?"
+                hx-target="body"
+                hx-push-url="/">
+            Delete
+        </button>
+    </div>
+</div>
