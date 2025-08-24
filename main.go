@@ -45,6 +45,8 @@ func main() {
 	r.HandleFunc("/contacts/create", h.CreateContact).Methods("GET", "POST")
 	r.HandleFunc("/contacts/{id}/threads", h.GetContactThreads).Methods("GET")
 	r.HandleFunc("/contacts/{id}/message", h.CreateMessage).Methods("GET", "POST")
+	r.HandleFunc("/contacts/email/forward", h.ForwardEmail).Methods("POST")
+	r.HandleFunc("/contacts/email/parse", h.ParseEmailForm).Methods("GET", "POST")
 
 	// JSON API endpoints
 	api := r.PathPrefix("/api").Subrouter()
